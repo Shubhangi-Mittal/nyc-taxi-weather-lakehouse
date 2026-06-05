@@ -4,3 +4,7 @@ __pycache__/
 .env
 data/
 .DS_Store
+
+spark-warehouse/
+metastore_db/
+derby.log
