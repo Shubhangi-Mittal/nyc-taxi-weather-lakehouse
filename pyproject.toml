@@ -1,0 +1,14 @@
+[project]
+name = "lakehouse"
+version = "0.1.0"
+description = "NYC Taxi & Weather Lakehouse"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = []
+
+[tool.poetry]
+packages = [{ include = "lakehouse", from = "src" }]
+
+[build-system]
+requires = ["poetry-core>=2.0.0"]
+build-backend = "poetry.core.masonry.api"

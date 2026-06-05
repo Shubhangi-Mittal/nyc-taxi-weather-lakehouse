@@ -1,0 +1,16 @@
+services:
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
+    container_name: lakehouse-minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # S3 API  (apps connect here)
+      - "9001:9001"   # Web console (you log in here)
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio-data:/data
+
+volumes:
+  minio-data:
