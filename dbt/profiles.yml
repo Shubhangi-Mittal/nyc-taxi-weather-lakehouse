@@ -1,0 +1,9 @@
+nyc_lakehouse:
+  target: dev
+  outputs:
+    dev:
+      type: spark
+      method: session     # run models against the in-process PySpark engine
+      schema: silver       # models land in the 'silver' namespace
+      host: localhost      # required field, ignored by the session method
+      threads: 1

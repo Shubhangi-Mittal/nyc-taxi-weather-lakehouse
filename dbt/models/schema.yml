@@ -1,0 +1,16 @@
+version: 2
+
+models:
+  - name: stg_yellow
+    columns:
+      - name: pickup_at
+        tests:
+          - not_null
+  - name: gold_weather_impact
+    columns:
+      - name: weather_condition
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['clear', 'rain', 'snow']

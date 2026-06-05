@@ -5,10 +5,14 @@ from pyspark.sql import SparkSession
 MINIO_ENDPOINT = "http://localhost:9000"
 ICEBERG_VERSION = "1.10.2"
 HADOOP_AWS_VERSION = "3.3.4"
+SQLITE_JDBC_VERSION = "3.45.3.0"
 PACKAGES = (
     f"org.apache.iceberg:iceberg-spark-runtime-3.5_2.12:{ICEBERG_VERSION},"
-    f"org.apache.hadoop:hadoop-aws:{HADOOP_AWS_VERSION}"
+    f"org.apache.hadoop:hadoop-aws:{HADOOP_AWS_VERSION},"
+    f"org.xerial:sqlite-jdbc:{SQLITE_JDBC_VERSION}"
 )
+
+CATALOG_URI = f"jdbc:sqlite:{os.path.abspath('lakehouse_catalog.db')}"
 
 load_dotenv()
 ACCESS_KEY = os.environ["MINIO_ROOT_USER"]
@@ -22,7 +26,9 @@ def get_spark(app_name: str = "lakehouse") -> SparkSession:
         .config("spark.sql.extensions",
                 "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
         .config("spark.sql.catalog.lakehouse", "org.apache.iceberg.spark.SparkCatalog")
-        .config("spark.sql.catalog.lakehouse.type", "hadoop")
+        .config("spark.sql.catalog.lakehouse.type", "jdbc")
+        .config("spark.sql.catalog.lakehouse.uri", CATALOG_URI)
+        .config("spark.sql.catalog.lakehouse.jdbc.schema-version", "V1")
         .config("spark.sql.catalog.lakehouse.warehouse", "s3a://warehouse/")
         .config("spark.hadoop.fs.s3a.endpoint", MINIO_ENDPOINT)
         .config("spark.hadoop.fs.s3a.access.key", ACCESS_KEY)

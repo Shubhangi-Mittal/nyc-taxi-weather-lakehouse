@@ -8,3 +8,9 @@ data/
 spark-warehouse/
 metastore_db/
 derby.log
+
+spark-conf/
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+lakehouse_catalog.db

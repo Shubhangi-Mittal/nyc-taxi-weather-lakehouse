@@ -1,0 +1,12 @@
+name: "nyc_lakehouse"
+version: "1.0.0"
+config-version: 2
+profile: "nyc_lakehouse"
+
+model-paths: ["models"]
+
+# Every model defaults to a materialized Iceberg table:
+models:
+  nyc_lakehouse:
+    +materialized: table
+    +file_format: iceberg
