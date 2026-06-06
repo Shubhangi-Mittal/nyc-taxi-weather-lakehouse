@@ -93,7 +93,3 @@ poetry run python -m lakehouse.ingest_weather
 - [ ] Orchestration (Airflow)
 - [ ] Streaming variant (Kafka + Spark Structured Streaming)
 - [ ] Cloud variant (BigQuery, Pub/Sub, Dataflow)
-
-## License
-
-Code released under the MIT License. Weather data © Open-Meteo, licensed under CC BY 4.0.
