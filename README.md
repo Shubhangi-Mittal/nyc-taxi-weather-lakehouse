@@ -88,8 +88,8 @@ poetry run python -m lakehouse.ingest_weather
 - [x] Local object storage (MinIO)
 - [x] Batch ingestion — TLC taxi + Open-Meteo weather
 - [x] Bronze Iceberg tables via Spark
-- [ ] Silver & gold transformations (dbt)
-- [ ] Data quality gates (Great Expectations)
-- [ ] Orchestration (Airflow)
+- [x] Silver & gold transformations (dbt)
+- [x] Data quality gates (Great Expectations)
+- [x] Orchestration (Airflow)
 - [ ] Streaming variant (Kafka + Spark Structured Streaming)
-- [ ] Cloud variant (BigQuery, Pub/Sub, Dataflow)
+- [x] Cloud variant (BigQuery, Pub/Sub, Dataflow)

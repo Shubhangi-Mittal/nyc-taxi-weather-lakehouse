@@ -3,7 +3,7 @@ with trips as (
 ),
 weather as (
     select
-        date_format(observed_at, 'yyyy-MM-dd HH') as weather_hour_key,
+        {{ hour_key('observed_at') }} as weather_hour_key,
         temperature_c,
         precipitation_mm,
         snowfall_cm,

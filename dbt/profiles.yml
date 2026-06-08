@@ -3,7 +3,14 @@ nyc_lakehouse:
   outputs:
     dev:
       type: spark
-      method: session     # run models against the in-process PySpark engine
-      schema: silver       # models land in the 'silver' namespace
-      host: localhost      # required field, ignored by the session method
+      method: session
+      schema: silver
+      host: localhost
       threads: 1
+    bq:
+      type: bigquery
+      method: oauth
+      project: nyc-lakehouse
+      dataset: lakehouse
+      location: US
+      threads: 4
