@@ -14,3 +14,4 @@ dbt/target/
 dbt/logs/
 dbt/dbt_packages/
 lakehouse_catalog.db
+airflow_home/
