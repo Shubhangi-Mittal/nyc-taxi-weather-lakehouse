@@ -1,10 +1,3 @@
-"""
-Airflow DAG: orchestrate the NYC taxi + weather lakehouse end to end.
-
-Airflow only conducts — each task shells out to the project's Poetry
-environment, so your existing scripts and dbt do the actual work.
-"""
-
 import pendulum
 
 from airflow.sdk import DAG

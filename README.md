@@ -87,7 +87,7 @@ Aggregating one month (January 2024) of trips by the weather at pickup hour:
 
 ## Running it
 
-**Prerequisites:** Docker, Python 3.11, Poetry, Java 17 (for Spark). For the cloud variant: a Google Cloud project and the `gcloud` CLU.
+**Prerequisites:** Docker, Python 3.11, Poetry, Java 17 (for Spark). For the cloud variant: a Google Cloud project and the `gcloud` CLI.
 
 **Local:**
 ```bash
@@ -127,7 +127,3 @@ Real issues solved while building this — the interesting part:
 - [x] Orchestration (Airflow)
 - [x] Cloud variant (BigQuery), same models via dialect macros
 - [ ] Streaming variant (Kafka + Spark Structured Streaming)
-
-## License
-
-Code under the MIT License. Weather data © Open-Meteo, CC BY 4.0.
