@@ -9,6 +9,9 @@ weather as (
         snowfall_cm,
         wind_speed_kmh
     from {{ ref('stg_weather') }}
+),
+zones as (
+    select * from {{ ref('stg_zones') }}
 )
 
 select
@@ -16,6 +19,12 @@ select
     w.temperature_c,
     w.precipitation_mm,
     w.snowfall_cm,
-    w.wind_speed_kmh
+    w.wind_speed_kmh,
+    puz.borough   as pickup_borough,
+    puz.zone_name as pickup_zone,
+    doz.borough   as dropoff_borough,
+    doz.zone_name as dropoff_zone
 from trips t
-left join weather w on t.pickup_hour_key = w.weather_hour_key
+left join weather w  on t.pickup_hour_key      = w.weather_hour_key
+left join zones puz  on t.pickup_location_id    = puz.location_id
+left join zones doz  on t.dropoff_location_id   = doz.location_id

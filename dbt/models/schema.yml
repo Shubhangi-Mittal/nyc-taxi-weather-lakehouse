@@ -14,3 +14,8 @@ models:
           - accepted_values:
               arguments:
                 values: ['clear', 'rain', 'snow']
+  - name: gold_borough_demand
+    columns:
+      - name: pickup_borough
+        tests:
+          - not_null

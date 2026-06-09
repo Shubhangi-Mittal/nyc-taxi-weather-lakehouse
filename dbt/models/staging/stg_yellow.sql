@@ -6,6 +6,8 @@ select
     tpep_pickup_datetime                   as pickup_at,
     tpep_dropoff_datetime                  as dropoff_at,
     {{ hour_key('tpep_pickup_datetime') }} as pickup_hour_key,
+    PULocationID                           as pickup_location_id,
+    DOLocationID                           as dropoff_location_id,
     passenger_count,
     trip_distance                          as trip_distance_mi,
     payment_type,
