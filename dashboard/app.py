@@ -10,10 +10,9 @@ DATASET = "lakehouse"
 st.set_page_config(page_title="NYC Taxi & Weather Lakehouse", layout="wide")
 
 
-@st.cache_data(ttl=600)
+@st.cache_resource
 def get_client() -> bigquery.Client:
-    # On Streamlit Cloud: authenticate with the service account in secrets.
-    # Locally: fall back to your gcloud application-default login.
+    # On Streamlit Cloud: service account from secrets. Locally: gcloud ADC.
     try:
         sa_info = dict(st.secrets["gcp_service_account"])
     except Exception:
