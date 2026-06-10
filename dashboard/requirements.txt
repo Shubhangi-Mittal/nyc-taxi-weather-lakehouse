@@ -1,0 +1,3 @@
+streamlit
+plotly
+google-cloud-bigquery[pandas]
