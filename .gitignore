@@ -15,3 +15,5 @@ dbt/logs/
 dbt/dbt_packages/
 lakehouse_catalog.db
 airflow_home/
+.streamlit/secrets.toml
+streamlit-sa-key.json

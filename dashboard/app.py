@@ -1,12 +1,8 @@
-"""
-NYC Taxi & Weather Lakehouse - dashboard over the gold tables (BigQuery).
-Run:  streamlit run dashboard/app.py
-"""
-
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 from google.cloud import bigquery
+from google.oauth2 import service_account
 
 PROJECT = "nyc-lakehouse"
 DATASET = "lakehouse"
@@ -15,8 +11,22 @@ st.set_page_config(page_title="NYC Taxi & Weather Lakehouse", layout="wide")
 
 
 @st.cache_data(ttl=600)
+def get_client() -> bigquery.Client:
+    # On Streamlit Cloud: authenticate with the service account in secrets.
+    # Locally: fall back to your gcloud application-default login.
+    try:
+        sa_info = dict(st.secrets["gcp_service_account"])
+    except Exception:
+        sa_info = None
+    if sa_info:
+        creds = service_account.Credentials.from_service_account_info(sa_info)
+        return bigquery.Client(credentials=creds, project=PROJECT)
+    return bigquery.Client(project=PROJECT)
+
+
+@st.cache_data(ttl=600)
 def load(table: str) -> pd.DataFrame:
-    client = bigquery.Client(project=PROJECT)
+    client = get_client()
     return client.query(f"SELECT * FROM `{PROJECT}.{DATASET}.{table}`").to_dataframe()
 
 
