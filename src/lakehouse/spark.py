@@ -38,6 +38,7 @@ def get_spark(app_name: str = "lakehouse") -> SparkSession:
         .config("spark.hadoop.fs.s3a.aws.credentials.provider",
                 "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider")
         .config("spark.sql.shuffle.partitions", "8")
+        .config("spark.driver.memory", "4g")
         .getOrCreate()
     )
     spark.sparkContext.setLogLevel("WARN")
