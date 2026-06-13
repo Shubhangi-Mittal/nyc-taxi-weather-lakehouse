@@ -17,3 +17,5 @@ lakehouse_catalog.db
 airflow_home/
 .streamlit/secrets.toml
 streamlit-sa-key.json
+taxi_zones.zip
+taxi_zones_shp/

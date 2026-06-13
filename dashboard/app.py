@@ -8,6 +8,8 @@ import plotly.express as px
 import streamlit as st
 from google.cloud import bigquery
 from google.oauth2 import service_account
+import json
+import os
 
 PROJECT = "nyc-lakehouse"
 DATASET = "lakehouse"
@@ -48,6 +50,11 @@ base["month_num"] = base["pickup_month"].str[-2:].astype(int)
 base["quarter"] = "Q" + ((base["month_num"] - 1) // 3 + 1).astype(str)
 base["season"] = base["month_num"].map(SEASON)
 borough = load("gold_borough_demand")
+zone = load("gold_zone_demand")
+zone["pickup_location_id"] = zone["pickup_location_id"].astype(str)
+HERE = os.path.dirname(os.path.abspath(__file__))
+with open(os.path.join(HERE, "taxi_zones.geojson")) as f:
+    ZONES_GEOJSON = json.load(f)
 
 
 def rollup(df: pd.DataFrame, by: str) -> pd.DataFrame:
@@ -84,6 +91,22 @@ c1.metric("Total trips (2024)", f"{total_trips:,}")
 c2.metric("Avg fare", f"${base['total_fare_usd'].sum() / total_trips:.2f}")
 c3.metric("Card tip %", f"{100 * base['card_tip_usd'].sum() / base['card_fare_usd'].sum():.1f}%")
 c4.metric("Rain vs clear tip gap", f"{annual_gap:+.1f} pts", help="Full-year. ~0 = no real effect.")
+
+# ---- Map ----------------------------------------------------------------
+st.subheader("Where the trips are")
+METRICS = {"Trips": "trips", "Avg fare ($)": "avg_fare_usd", "Card tip %": "avg_tip_pct_card"}
+metric_label = st.selectbox("Color zones by", list(METRICS))
+metric_col = METRICS[metric_label]
+fig = px.choropleth_map(
+    zone, geojson=ZONES_GEOJSON, locations="pickup_location_id",
+    featureidkey="properties.location_id", color=metric_col,
+    color_continuous_scale="Viridis", map_style="carto-positron",
+    center={"lat": 40.72, "lon": -73.95}, zoom=9, opacity=0.6,
+    hover_name="zone_name",
+    hover_data={"pickup_location_id": False, "borough": True, metric_col: True},
+)
+fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, height=600)
+st.plotly_chart(fig, use_container_width=True)
 
 # ---- Filter -------------------------------------------------------------
 grain_label = st.sidebar.radio("Time granularity", list(GRAINS.keys()))
