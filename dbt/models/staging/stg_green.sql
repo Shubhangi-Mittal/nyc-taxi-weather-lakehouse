@@ -1,12 +1,12 @@
 with source as (
-    select * from {{ source('bronze', 'yellow_trips') }}
+    select * from {{ source('bronze', 'green_trips') }}
 )
 
 select
-    'yellow'                               as service_type,
-    tpep_pickup_datetime                   as pickup_at,
-    tpep_dropoff_datetime                  as dropoff_at,
-    {{ hour_key('tpep_pickup_datetime') }} as pickup_hour_key,
+    'green'                                as service_type,
+    lpep_pickup_datetime                   as pickup_at,
+    lpep_dropoff_datetime                  as dropoff_at,
+    {{ hour_key('lpep_pickup_datetime') }} as pickup_hour_key,
     PULocationID                           as pickup_location_id,
     DOLocationID                           as dropoff_location_id,
     passenger_count,
@@ -15,8 +15,8 @@ select
     fare_amount                            as fare_usd,
     tip_amount                             as tip_usd
 from source
-where tpep_pickup_datetime >= '2024-01-01'
-  and tpep_pickup_datetime <  '2025-01-01'
+where lpep_pickup_datetime >= '2024-01-01'
+  and lpep_pickup_datetime <  '2025-01-01'
   and trip_distance > 0 and trip_distance < 100
   and fare_amount >= 0
-  and tpep_dropoff_datetime > tpep_pickup_datetime
+  and lpep_dropoff_datetime > lpep_pickup_datetime

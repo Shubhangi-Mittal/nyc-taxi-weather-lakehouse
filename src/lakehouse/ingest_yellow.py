@@ -38,11 +38,11 @@ def download(url: str, dest: Path) -> None:
     print(f"Saved -> {dest} ({dest.stat().st_size / 1_000_000:.1f} MB)")
 
 
-def ingest(year: str, month: str) -> None:
-    filename = f"{DATASET}_tripdata_{year}-{month}.parquet"
+def ingest(dataset: str, year: str, month: str) -> None:
+    filename = f"{dataset}_tripdata_{year}-{month}.parquet"
     source_url = f"https://d37ci6vzurychx.cloudfront.net/trip-data/{filename}"
     local_path = Path("data") / filename
-    object_key = f"{DATASET}/{filename}"
+    object_key = f"{dataset}/{filename}"
 
     s3 = get_s3_client()
     download(source_url, local_path)
@@ -53,11 +53,12 @@ def ingest(year: str, month: str) -> None:
 
 
 def main() -> None:
-    p = argparse.ArgumentParser(description="Ingest one month of yellow-taxi data to MinIO raw.")
+    p = argparse.ArgumentParser(description="Ingest one month of a TLC dataset to MinIO raw.")
+    p.add_argument("--dataset", default="yellow")
     p.add_argument("--year", default="2024")
     p.add_argument("--month", default="01")
     args = p.parse_args()
-    ingest(args.year, args.month)
+    ingest(args.dataset,args.year, args.month)
 
 
 if __name__ == "__main__":

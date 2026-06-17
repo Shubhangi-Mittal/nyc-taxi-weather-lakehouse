@@ -10,7 +10,7 @@
 {% endif %}
 
 with trips as (
-    select * from {{ ref('stg_yellow') }}
+    select * from {{ ref('conformed_trips') }}
 ),
 weather as (
     select

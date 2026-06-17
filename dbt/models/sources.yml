@@ -6,3 +6,5 @@ sources:
       - name: yellow_trips
       - name: weather
       - name: taxi_zones
+      - name: green_trips
+
