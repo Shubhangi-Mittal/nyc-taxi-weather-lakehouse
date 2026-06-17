@@ -1,15 +1,15 @@
 """
-NYC Taxi & Weather Lakehouse - interactive dashboard over the gold tables (BigQuery).
+NYC Taxi & Weather Lakehouse - interactive dashboard (BigQuery gold tables).
 Run locally:  streamlit run dashboard/app.py
 """
+import json
+import os
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 from google.cloud import bigquery
 from google.oauth2 import service_account
-import json
-import os
 
 PROJECT = "nyc-lakehouse"
 DATASET = "lakehouse"
@@ -31,133 +31,105 @@ def get_client() -> bigquery.Client:
 
 @st.cache_data(ttl=600)
 def load(table: str) -> pd.DataFrame:
-    client = get_client()
-    return client.query(f"SELECT * FROM `{PROJECT}.{DATASET}.{table}`").to_dataframe()
+    return get_client().query(f"SELECT * FROM `{PROJECT}.{DATASET}.{table}`").to_dataframe()
 
 
-SEASON = {12: "Winter", 1: "Winter", 2: "Winter",
-          3: "Spring", 4: "Spring", 5: "Spring",
-          6: "Summer", 7: "Summer", 8: "Summer",
-          9: "Fall", 10: "Fall", 11: "Fall"}
-GRAINS = {
-    "Monthly":   ("pickup_month", None),
-    "Quarterly": ("quarter", ["Q1", "Q2", "Q3", "Q4"]),
-    "Seasonal":  ("season", ["Winter", "Spring", "Summer", "Fall"]),
-}
-
-base = load("gold_month_weather").copy()
-base["month_num"] = base["pickup_month"].str[-2:].astype(int)
-base["quarter"] = "Q" + ((base["month_num"] - 1) // 3 + 1).astype(str)
-base["season"] = base["month_num"].map(SEASON)
-borough = load("gold_borough_demand")
-zone = load("gold_zone_demand")
-zone["pickup_location_id"] = zone["pickup_location_id"].astype(str)
 HERE = os.path.dirname(os.path.abspath(__file__))
 with open(os.path.join(HERE, "taxi_zones.geojson")) as f:
-    ZONES_GEOJSON = json.load(f)
+    GEO = json.load(f)
 
+zms = load("gold_zone_month_service")
+zms["pickup_location_id"] = zms["pickup_location_id"].astype(str)
+weather = load("gold_month_weather")
 
-def rollup(df: pd.DataFrame, by: str) -> pd.DataFrame:
-    g = df.groupby([by, "weather_condition"], as_index=False).agg(
-        trips=("trips", "sum"),
-        total_distance_mi=("total_distance_mi", "sum"),
-        total_fare_usd=("total_fare_usd", "sum"),
-        card_fare_usd=("card_fare_usd", "sum"),
-        card_tip_usd=("card_tip_usd", "sum"),
-    )
-    g["avg_fare_usd"] = (g["total_fare_usd"] / g["trips"]).round(2)
-    g["tip_pct_card"] = (100 * g["card_tip_usd"] / g["card_fare_usd"].replace(0, float("nan"))).round(2)
-    return g
+LABELS = {"yellow": "Yellow taxi", "green": "Green taxi"}
+BOROUGHS = ["Manhattan", "Queens", "Brooklyn", "Bronx", "Staten Island", "EWR", "Unknown"]
 
-
-def ordered(df: pd.DataFrame, col: str, order) -> pd.DataFrame:
-    if order:
-        df[col] = pd.Categorical(df[col], categories=order, ordered=True)
-    return df.sort_values(col)
-
-
-# ---- Header + KPIs ------------------------------------------------------
 st.title("NYC Taxi & Weather Lakehouse")
-st.caption("Yellow-taxi trips joined to hourly NYC weather · full-year 2024 · ~40M trips · "
+st.caption("Yellow + green taxi trips joined to hourly weather and zone geography · 2024 · "
            "dual-cloud (Iceberg + BigQuery)")
 
-total_trips = int(base["trips"].sum())
-yr = base.groupby("weather_condition")[["card_fare_usd", "card_tip_usd"]].sum()
-yr["tip"] = 100 * yr["card_tip_usd"] / yr["card_fare_usd"]
-annual_gap = yr.loc["rain", "tip"] - yr.loc["clear", "tip"]
+# ---- Service filter ----
+avail = [s for s in ["yellow", "green"] if s in set(zms["service_type"])]
+picked = st.sidebar.multiselect("Service", avail, default=avail,
+                                format_func=lambda s: LABELS.get(s, s))
+if not picked:
+    st.warning("Pick at least one service.")
+    st.stop()
+fz = zms[zms["service_type"].isin(picked)].copy()
+months = sorted(fz["pickup_month"].unique())
 
-c1, c2, c3, c4 = st.columns(4)
-c1.metric("Total trips (2024)", f"{total_trips:,}")
-c2.metric("Avg fare", f"${base['total_fare_usd'].sum() / total_trips:.2f}")
-c3.metric("Card tip %", f"{100 * base['card_tip_usd'].sum() / base['card_fare_usd'].sum():.1f}%")
-c4.metric("Rain vs clear tip gap", f"{annual_gap:+.1f} pts", help="Full-year. ~0 = no real effect.")
+# ---- KPIs ----
+total = int(fz["trips"].sum())
+c1, c2, c3 = st.columns(3)
+c1.metric("Total trips (2024)", f"{total:,}")
+c2.metric("Avg fare", f"${fz['total_fare_usd'].sum() / total:.2f}")
+c3.metric("Showing", ", ".join(LABELS[s] for s in picked))
 
-# ---- Map ----------------------------------------------------------------
-st.subheader("Where the trips are")
-METRICS = {"Trips": "trips", "Avg fare ($)": "avg_fare_usd", "Card tip %": "avg_tip_pct_card"}
-metric_label = st.selectbox("Color zones by", list(METRICS))
-metric_col = METRICS[metric_label]
-fig = px.choropleth_map(
-    zone, geojson=ZONES_GEOJSON, locations="pickup_location_id",
-    featureidkey="properties.location_id", color=metric_col,
-    color_continuous_scale="Viridis", map_style="carto-positron",
-    center={"lat": 40.72, "lon": -73.95}, zoom=9, opacity=0.6,
-    hover_name="zone_name",
-    hover_data={"pickup_location_id": False, "borough": True, metric_col: True},
-)
-fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, height=600)
-st.plotly_chart(fig, use_container_width=True)
+tab_map, tab_trends, tab_weather = st.tabs(["Map", "Trends", "Weather"])
 
-# ---- Filter -------------------------------------------------------------
-grain_label = st.sidebar.radio("Time granularity", list(GRAINS.keys()))
-grain_col, order = GRAINS[grain_label]
-g = ordered(rollup(base, grain_col), grain_col, order)
+# ---- MAP: scrub through months ----
+with tab_map:
+    sel = st.select_slider("Month", options=["Full year"] + months, value="Full year")
+    src = fz if sel == "Full year" else fz[fz["pickup_month"] == sel]
+    m = src.groupby(["pickup_location_id", "zone_name", "borough"], as_index=False).agg(
+        trips=("trips", "sum"), total_fare_usd=("total_fare_usd", "sum"))
+    m["avg_fare_usd"] = (m["total_fare_usd"] / m["trips"]).round(2)
 
-# ---- Noise vs signal ----------------------------------------------------
-st.subheader(f"Does weather move tipping? ({grain_label.lower()})")
-st.markdown(
-    "Across the full year, tipping holds near **25%** in every condition. The right-hand "
-    "chart shows the rain-vs-clear tip gap swinging around **zero** period to period — "
-    "January's +3 points was an outlier, not a pattern. Scaling from one month to a full "
-    "year turned an exciting-but-fake finding into an honest one."
-)
+    metric = st.radio("Color by", ["Trips", "Avg fare"], horizontal=True)
+    col = "trips" if metric == "Trips" else "avg_fare_usd"
+    # fixed colour ceiling so months are visually comparable as you scrub
+    per_month = fz.groupby(["pickup_location_id", "pickup_month"], as_index=False).agg(
+        trips=("trips", "sum"), total_fare_usd=("total_fare_usd", "sum"))
+    per_month["avg_fare_usd"] = per_month["total_fare_usd"] / per_month["trips"]
+    cmax = float(per_month[col].quantile(0.97))
 
-pivot = g.pivot_table(index=grain_col, columns="weather_condition",
-                      values="tip_pct_card", observed=True)
-gap = (pivot["rain"] - pivot["clear"]).reset_index(name="rain_minus_clear")
-
-a, b = st.columns(2)
-with a:
-    fig = px.line(g, x=grain_col, y="tip_pct_card", color="weather_condition",
-                  markers=True, title="Card tip % by weather")
-    fig.update_yaxes(range=[20, 32], title="Tip %")
-    fig.update_xaxes(title="")
+    fig = px.choropleth_map(
+        m, geojson=GEO, locations="pickup_location_id",
+        featureidkey="properties.location_id", color=col,
+        color_continuous_scale="Plasma", range_color=[0, cmax],
+        map_style="carto-positron", center={"lat": 40.72, "lon": -73.95},
+        zoom=8.6, opacity=0.65, hover_name="zone_name",
+        hover_data={"pickup_location_id": False, "borough": True},
+    )
+    fig.update_layout(margin={"r": 0, "t": 0, "l": 0, "b": 0}, height=620)
     st.plotly_chart(fig, use_container_width=True)
-with b:
-    fig = px.bar(gap, x=grain_col, y="rain_minus_clear", title="Rain − clear tip gap")
-    fig.add_hline(y=0, line_dash="dash", line_color="gray")
-    fig.update_yaxes(title="Points")
-    fig.update_xaxes(title="")
-    st.plotly_chart(fig, use_container_width=True)
+    st.caption("Drag the slider to scrub through 2024. Yellow clusters in Manhattan; "
+               "green spreads into the outer boroughs.")
 
-# ---- Volume + fares -----------------------------------------------------
-st.subheader(f"Trips and fares ({grain_label.lower()})")
-vol = ordered(base.groupby(grain_col, as_index=False).agg(
-    trips=("trips", "sum"), total_fare_usd=("total_fare_usd", "sum")), grain_col, order)
-vol["avg_fare_usd"] = (vol["total_fare_usd"] / vol["trips"]).round(2)
-
-a, b = st.columns(2)
-with a:
-    fig = px.bar(vol, x=grain_col, y="trips", title="Trip volume")
+# ---- TRENDS: animated ----
+with tab_trends:
+    bm = fz.groupby(["borough", "pickup_month"], as_index=False)["trips"].sum()
+    order = [b for b in BOROUGHS if b in set(bm["borough"])]
+    fig = px.bar(bm, x="borough", y="trips", color="borough",
+                 animation_frame="pickup_month", range_y=[0, bm["trips"].max() * 1.1],
+                 category_orders={"borough": order, "pickup_month": months},
+                 title="Trips by borough — press ▶ to animate across 2024")
     fig.update_xaxes(title=""); fig.update_yaxes(title="Trips")
-    st.plotly_chart(fig, use_container_width=True)
-with b:
-    fig = px.line(vol, x=grain_col, y="avg_fare_usd", markers=True, title="Average fare")
-    fig.update_xaxes(title=""); fig.update_yaxes(title="USD")
+    fig.update_layout(showlegend=False, height=520)
     st.plotly_chart(fig, use_container_width=True)
 
-# ---- Borough ------------------------------------------------------------
-st.subheader("Pickups by borough (full year)")
-fig = px.bar(borough.sort_values("trips"), x="trips", y="pickup_borough", orientation="h")
-fig.update_yaxes(title=""); fig.update_xaxes(title="Trips")
-st.plotly_chart(fig, use_container_width=True)
+    vol = fz.groupby("pickup_month", as_index=False)["trips"].sum()
+    fig2 = px.line(vol, x="pickup_month", y="trips", markers=True, title="Monthly trip volume")
+    fig2.update_xaxes(title=""); fig2.update_yaxes(title="Trips")
+    st.plotly_chart(fig2, use_container_width=True)
+
+# ---- WEATHER: the noise-vs-signal finding ----
+with tab_weather:
+    st.markdown("Tipping holds near **25%** in clear, rain, and snow alike. One month suggested a "
+                "rain bonus; a full year showed it was noise. *(Card tips, yellow + green.)*")
+    w = weather.groupby("weather_condition", as_index=False).agg(
+        trips=("trips", "sum"), card_fare_usd=("card_fare_usd", "sum"),
+        card_tip_usd=("card_tip_usd", "sum"))
+    w["tip_pct"] = (100 * w["card_tip_usd"] / w["card_fare_usd"]).round(1)
+    a, b = st.columns(2)
+    with a:
+        fig = px.bar(w, x="weather_condition", y="tip_pct", color="weather_condition", text="tip_pct")
+        fig.update_yaxes(range=[0, 35], title="Card tip %"); fig.update_xaxes(title="")
+        fig.update_layout(showlegend=False)
+        st.plotly_chart(fig, use_container_width=True)
+    with b:
+        fig = px.bar(w, x="weather_condition", y="trips", color="weather_condition")
+        fig.update_xaxes(title=""); fig.update_yaxes(title="Trips")
+        fig.update_layout(showlegend=False)
+        st.plotly_chart(fig, use_container_width=True)
