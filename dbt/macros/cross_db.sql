@@ -21,3 +21,19 @@
         cast({{ str_column }} as datetime)
     {%- endif -%}
 {% endmacro %}
+
+{% macro hour_of_day(ts) %}
+    {%- if target.type == 'spark' -%}
+        hour({{ ts }})
+    {%- else -%}
+        extract(hour from {{ ts }})
+    {%- endif -%}
+{% endmacro %}
+
+{% macro day_name(ts) %}
+    {%- if target.type == 'spark' -%}
+        date_format({{ ts }}, 'EEE')
+    {%- else -%}
+        format_datetime('%a', cast({{ ts }} as datetime))
+    {%- endif -%}
+{% endmacro %}
